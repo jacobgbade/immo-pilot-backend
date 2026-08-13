@@ -49,6 +49,12 @@ class AuthController extends Controller
             'units_range' => $data['units_range'] ?? null,
         ]);
 
+        $user->alerts()->create([
+            'category' => 'systeme',
+            'icon' => '✓',
+            'message' => 'Votre compte IMMO PILOT a été créé avec succès.',
+        ]);
+
         $token = $user->createToken('mobile')->plainTextToken;
 
         return response()->json(['user' => $user, 'token' => $token], 201);

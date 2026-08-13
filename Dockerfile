@@ -15,6 +15,7 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction
 RUN chmod -R 775 storage bootstrap/cache
 
 EXPOSE 10000
+ENV PHP_CLI_SERVER_WORKERS=8
 CMD php artisan config:clear \
     && php artisan migrate --force \
-    && php artisan serve --host=0.0.0.0 --port=${PORT:-10000}
+    && php artisan serve --host=0.0.0.0 --port=${PORT:-10000} --no-reload

@@ -52,6 +52,19 @@ class DocumentController extends Controller
         return response()->json($document, 201);
     }
 
+    public function update(Request $request, Document $document)
+    {
+        $this->authorizeOwner($request, $document);
+
+        $data = $request->validate([
+            'category' => ['required', 'in:contrats,quittances,documents_locataires,documents_immobiliers,factures,autres'],
+        ]);
+
+        $document->update($data);
+
+        return response()->json($document->fresh());
+    }
+
     public function download(Request $request, Document $document)
     {
         $this->authorizeOwner($request, $document);

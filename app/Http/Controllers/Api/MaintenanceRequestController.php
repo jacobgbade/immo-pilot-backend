@@ -16,7 +16,7 @@ class MaintenanceRequestController extends Controller
     /** Spec section 27: list, most recent first. */
     public function index(Request $request)
     {
-        $requests = MaintenanceRequest::whereIn('property_id', $request->user()->properties()->pluck('id'))
+        $requests = MaintenanceRequest::whereIn('property_id', $request->user()->properties()->whereNull('archived_at')->pluck('id'))
             ->with('property', 'unit', 'tenant', 'artisan')
             ->latest('reported_at')
             ->get();
@@ -50,7 +50,7 @@ class MaintenanceRequestController extends Controller
             'subject_id' => $maintenanceRequest->id,
         ]);
 
-        return response()->json($maintenanceRequest, 201);
+        return response()->json($maintenanceRequest->load('property', 'unit', 'tenant', 'artisan'), 201);
     }
 
     public function show(Request $request, MaintenanceRequest $maintenanceRequest)
@@ -71,7 +71,7 @@ class MaintenanceRequestController extends Controller
 
         $maintenanceRequest->update(['artisan_id' => $artisan->id, 'status' => 'assigned']);
 
-        return response()->json($maintenanceRequest->fresh()->load('artisan'));
+        return response()->json($maintenanceRequest->fresh()->load('property', 'unit', 'tenant', 'artisan'));
     }
 
     public function markInProgress(Request $request, MaintenanceRequest $maintenanceRequest)
@@ -79,7 +79,7 @@ class MaintenanceRequestController extends Controller
         $this->authorizeOwner($request, $maintenanceRequest, via: 'property');
         $maintenanceRequest->update(['status' => 'in_progress']);
 
-        return response()->json($maintenanceRequest->fresh());
+        return response()->json($maintenanceRequest->fresh()->load('property', 'unit', 'tenant', 'artisan'));
     }
 
     public function markResolved(Request $request, MaintenanceRequest $maintenanceRequest)
@@ -105,6 +105,6 @@ class MaintenanceRequestController extends Controller
             'subject_id' => $maintenanceRequest->id,
         ]);
 
-        return response()->json($maintenanceRequest->fresh());
+        return response()->json($maintenanceRequest->fresh()->load('property', 'unit', 'tenant', 'artisan'));
     }
 }

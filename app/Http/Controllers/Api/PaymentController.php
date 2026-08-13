@@ -16,7 +16,7 @@ class PaymentController extends Controller
     /** Spec section 25: history across all properties, most recent first. */
     public function index(Request $request)
     {
-        $propertyIds = $request->user()->properties()->pluck('id');
+        $propertyIds = $request->user()->properties()->whereNull('archived_at')->pluck('id');
 
         $payments = Payment::whereHas(
             'lease.unit',
@@ -35,7 +35,7 @@ class PaymentController extends Controller
 
         $leases = Lease::whereHas('unit', fn ($q) => $q->whereIn(
             'property_id',
-            $request->user()->properties()->pluck('id')
+            $request->user()->properties()->whereNull('archived_at')->pluck('id')
         ))->where('status', '!=', 'ended')
             ->with('tenant', 'unit.property', 'payments')
             ->get();

@@ -52,7 +52,7 @@ class ExpenseController extends Controller
     public function summary(Request $request)
     {
         $period = $request->query('period', now()->format('Y-m'));
-        $propertyIds = $request->user()->properties()->pluck('id');
+        $propertyIds = $request->user()->properties()->whereNull('archived_at')->pluck('id');
 
         $maintenance = (int) MaintenanceRequest::whereIn('property_id', $propertyIds)
             ->where('reported_at', 'like', "$period%")

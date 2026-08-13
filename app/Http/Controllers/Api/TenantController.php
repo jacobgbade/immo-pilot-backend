@@ -17,10 +17,12 @@ class TenantController extends Controller
         $period = $request->query('period', now()->format('Y-m'));
 
         $tenants = $request->user()->tenants()
-            ->with(['leases' => fn ($q) => $q->where('status', '!=', 'ended')->latest('start_date')->with('unit.property', 'payments')])
+            ->with(['leases' => fn ($q) => $q->where('status', '!=', 'ended')
+                ->whereHas('unit.property', fn ($q) => $q->whereNull('archived_at'))
+                ->latest('start_date')->with('unit.property', 'payments')])
             ->get()
             ->map(fn (Tenant $tenant) => $this->presentTenant($tenant, $period))
-            ->filter() // drop tenants with no active lease
+            ->filter() // drop tenants with no active lease on a non-archived property
             ->values();
 
         return response()->json($tenants);

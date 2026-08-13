@@ -70,6 +70,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Documents
     Route::get('/documents', [DocumentController::class, 'index']);
     Route::post('/documents', [DocumentController::class, 'store']);
+    Route::put('/documents/{document}', [DocumentController::class, 'update']);
     Route::get('/documents/{document}/download', [DocumentController::class, 'download']);
     Route::delete('/documents/{document}', [DocumentController::class, 'destroy']);
 

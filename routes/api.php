@@ -9,17 +9,23 @@ use App\Http\Controllers\Api\LeaseController;
 use App\Http\Controllers\Api\MaintenanceRequestController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PropertyController;
+use App\Http\Controllers\Api\TenantAuthController;
 use App\Http\Controllers\Api\TenantController;
+use App\Http\Controllers\Api\TenantPortalController;
 use App\Http\Controllers\Api\UnitController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/tenant/register', [TenantAuthController::class, 'register']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
     Route::put('/me', [AuthController::class, 'updateMe']);
+
+    // Tenant portal (role: tenant)
+    Route::get('/tenant/home', [TenantPortalController::class, 'home']);
 
     // Properties
     Route::get('/properties', [PropertyController::class, 'index']);

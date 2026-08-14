@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Api\Concerns\NormalizesPhone;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -11,16 +12,7 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    /**
-     * Users naturally type phone numbers with spaces (the field's own placeholder shows
-     * "+229 90 00 00 00"), so storage and lookups both normalize to digits-and-leading-+
-     * only — otherwise "+229 90 00 00 00" and "+22990000000" would be treated as different
-     * accounts and login would fail depending on how the user happened to type it that time.
-     */
-    private function normalizePhone(string $phone): string
-    {
-        return preg_replace('/[^\d+]/', '', $phone);
-    }
+    use NormalizesPhone;
 
     /** Spec section 10: name/phone/email, password, then "how many units" for onboarding. */
     public function register(Request $request)

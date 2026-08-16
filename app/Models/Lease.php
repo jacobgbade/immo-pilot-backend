@@ -51,6 +51,11 @@ class Lease extends Model
         return $this->hasMany(Inspection::class);
     }
 
+    public function demandLetters(): HasMany
+    {
+        return $this->hasMany(DemandLetter::class);
+    }
+
     /** Payment already recorded for the given "YYYY-MM" period, if any. */
     public function paymentForPeriod(string $period): ?Payment
     {

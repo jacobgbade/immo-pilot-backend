@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AlertController;
 use App\Http\Controllers\Api\ArtisanController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\DemandLetterController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\InspectionController;
@@ -48,6 +49,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/leases/{lease}/inspections', [InspectionController::class, 'index']);
     Route::post('/leases/{lease}/inspections', [InspectionController::class, 'store']);
     Route::get('/leases/{lease}/inspections/compare', [InspectionController::class, 'compare']);
+
+    // Mises en demeure (impayés)
+    Route::get('/demand-letters', [DemandLetterController::class, 'index']);
+    Route::post('/leases/{lease}/demand-letters', [DemandLetterController::class, 'store']);
+    Route::post('/demand-letters/{letter}/resolve', [DemandLetterController::class, 'resolve']);
 
     // Tenants
     Route::get('/tenants', [TenantController::class, 'index']);

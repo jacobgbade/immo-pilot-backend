@@ -81,6 +81,13 @@ class PaymentController extends Controller
             'reference' => 'PAY-' . Str::upper(Str::random(8)),
         ]);
 
+        // A payment settles any mise en demeure open for the same period (Art. 76) —
+        // the legal clock stops the moment the debt is actually paid.
+        $lease->demandLetters()
+            ->where('period', $data['period'])
+            ->whereNull('resolved_at')
+            ->update(['resolved_at' => now()]);
+
         $request->user()->alerts()->create([
             'category' => 'paiements',
             'icon' => '✓',

@@ -43,6 +43,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Leases (nested under a unit to create; flat to update/vacate)
     Route::post('/units/{unit}/lease', [LeaseController::class, 'store']);
     Route::put('/leases/{lease}', [LeaseController::class, 'update']);
+    Route::get('/leases/{lease}/vacate-summary', [LeaseController::class, 'vacateSummary']);
     Route::post('/leases/{lease}/vacate', [LeaseController::class, 'vacate']);
 
     // Inspections (états des lieux)

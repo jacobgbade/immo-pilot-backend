@@ -21,6 +21,9 @@ class Lease extends Model
         'deposit',
         'due_day',
         'status',
+        'deposit_refund_amount',
+        'deposit_refund_notes',
+        'deposit_refunded_at',
     ];
 
     protected function casts(): array
@@ -28,6 +31,7 @@ class Lease extends Model
         return [
             'start_date' => 'date',
             'end_date' => 'date',
+            'deposit_refunded_at' => 'date',
         ];
     }
 

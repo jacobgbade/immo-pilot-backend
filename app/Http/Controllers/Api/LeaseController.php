@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Api\Concerns\AuthorizesOwnership;
+use App\Http\Controllers\Api\InspectionController;
 use App\Http\Controllers\Controller;
 use App\Models\Lease;
 use App\Models\Tenant;
@@ -10,6 +11,7 @@ use App\Models\Unit;
 use App\Support\LegalRules;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class LeaseController extends Controller
 {
@@ -87,7 +89,49 @@ class LeaseController extends Controller
         return response()->json($lease->fresh());
     }
 
-    /** The tenant moves out: end the lease and free up the unit. */
+    /**
+     * Everything the owner needs to decide a fair deposit refund before confirming the
+     * move-out: damages surfaced by the entrée/sortie comparison (Art. 70) and any unpaid
+     * rent still open against this lease (Art. 70 also lets the deposit cover arrears).
+     */
+    public function vacateSummary(Request $request, Lease $lease)
+    {
+        $this->authorizeOwner($request, $lease, via: 'unit.property');
+
+        $inspections = $lease->inspections()->with('items')->get()->keyBy('type');
+        $entreeItems = $inspections->get('entree')?->items->keyBy('category') ?? collect();
+        $sortieItems = $inspections->get('sortie')?->items->keyBy('category') ?? collect();
+        $rank = fn (string $c) => ['bon' => 0, 'moyen' => 1, 'mauvais' => 2][$c];
+
+        $degradedItems = collect(InspectionController::CATEGORIES)
+            ->map(function (string $category) use ($entreeItems, $sortieItems, $rank) {
+                $before = $entreeItems->get($category);
+                $after = $sortieItems->get($category);
+                if ($before && $after && $rank($after->condition) > $rank($before->condition)) {
+                    return [
+                        'category' => $category,
+                        'entree_condition' => $before->condition,
+                        'sortie_condition' => $after->condition,
+                        'sortie_notes' => $after->notes,
+                    ];
+                }
+                return null;
+            })->filter()->values();
+
+        $openArrears = $lease->demandLetters()->whereNull('resolved_at')->get(['period', 'amount']);
+        $openArrearsTotal = $openArrears->sum('amount');
+        $deposit = $lease->deposit ?? 0;
+
+        return response()->json([
+            'deposit' => $lease->deposit,
+            'degraded_items' => $degradedItems,
+            'open_arrears' => $openArrears,
+            'open_arrears_total' => $openArrearsTotal,
+            'suggested_max_refund' => max(0, $deposit - $openArrearsTotal),
+        ]);
+    }
+
+    /** The tenant moves out: end the lease, settle the deposit, and free up the unit. */
     public function vacate(Request $request, Lease $lease)
     {
         $this->authorizeOwner($request, $lease, via: 'unit.property');
@@ -98,8 +142,30 @@ class LeaseController extends Controller
             "L'état des lieux de sortie est obligatoire avant la clôture du bail — Art. 11 de la loi n°2022-30."
         );
 
-        DB::transaction(function () use ($lease) {
-            $lease->update(['status' => 'ended', 'end_date' => now()]);
+        $data = $request->validate([
+            'deposit_refund_amount' => ['nullable', 'integer', 'min:0'],
+            'deposit_refund_notes' => ['nullable', 'string'],
+        ]);
+
+        // Art. 71: le montant de la caution ne peut être révisé — la restitution ne peut
+        // donc jamais dépasser ce qui a réellement été versé à l'entrée.
+        if (isset($data['deposit_refund_amount']) && $data['deposit_refund_amount'] > ($lease->deposit ?? 0)) {
+            throw ValidationException::withMessages([
+                'deposit_refund_amount' => [sprintf(
+                    'Le montant restitué ne peut dépasser la caution versée (%s FCFA) — Art. 69 et 71 de la loi n°2022-30.',
+                    number_format($lease->deposit ?? 0, 0, ',', ' '),
+                )],
+            ]);
+        }
+
+        DB::transaction(function () use ($lease, $data) {
+            $lease->update([
+                'status' => 'ended',
+                'end_date' => now(),
+                'deposit_refund_amount' => $data['deposit_refund_amount'] ?? null,
+                'deposit_refund_notes' => $data['deposit_refund_notes'] ?? null,
+                'deposit_refunded_at' => array_key_exists('deposit_refund_amount', $data) ? now() : null,
+            ]);
             $lease->unit->update(['status' => 'vacant']);
         });
 

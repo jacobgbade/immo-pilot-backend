@@ -17,6 +17,7 @@ class Lease extends Model
         'start_date',
         'end_date',
         'rent_amount',
+        'initial_rent_amount',
         'deposit',
         'due_day',
         'status',
@@ -43,6 +44,11 @@ class Lease extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    public function inspections(): HasMany
+    {
+        return $this->hasMany(Inspection::class);
     }
 
     /** Payment already recorded for the given "YYYY-MM" period, if any. */

@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\ArtisanController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\ExpenseController;
+use App\Http\Controllers\Api\InspectionController;
 use App\Http\Controllers\Api\LeaseController;
 use App\Http\Controllers\Api\MaintenanceRequestController;
 use App\Http\Controllers\Api\PaymentController;
@@ -42,6 +43,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/units/{unit}/lease', [LeaseController::class, 'store']);
     Route::put('/leases/{lease}', [LeaseController::class, 'update']);
     Route::post('/leases/{lease}/vacate', [LeaseController::class, 'vacate']);
+
+    // Inspections (états des lieux)
+    Route::get('/leases/{lease}/inspections', [InspectionController::class, 'index']);
+    Route::post('/leases/{lease}/inspections', [InspectionController::class, 'store']);
+    Route::get('/leases/{lease}/inspections/compare', [InspectionController::class, 'compare']);
 
     // Tenants
     Route::get('/tenants', [TenantController::class, 'index']);

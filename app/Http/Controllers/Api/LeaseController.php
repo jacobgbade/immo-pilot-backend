@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Lease;
 use App\Models\Tenant;
 use App\Models\Unit;
+use App\Support\LegalRules;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -34,6 +35,8 @@ class LeaseController extends Controller
             'due_day' => ['required', 'integer', 'min:1', 'max:28'],
         ]);
 
+        LegalRules::validateDeposit($data['rent_amount'], $data['deposit'] ?? null);
+
         $lease = DB::transaction(function () use ($data, $unit, $request) {
             if (! empty($data['tenant_id'])) {
                 $tenant = Tenant::findOrFail($data['tenant_id']);
@@ -50,6 +53,7 @@ class LeaseController extends Controller
                 'unit_id' => $unit->id,
                 'start_date' => $data['start_date'],
                 'rent_amount' => $data['rent_amount'],
+                'initial_rent_amount' => $data['rent_amount'],
                 'deposit' => $data['deposit'] ?? null,
                 'due_day' => $data['due_day'],
                 'status' => 'active',
@@ -74,6 +78,10 @@ class LeaseController extends Controller
             'status' => ['sometimes', 'in:active,expiring_soon,ended'],
         ]);
 
+        if (isset($data['rent_amount']) && $data['rent_amount'] !== $lease->rent_amount) {
+            LegalRules::validateRentRevision($lease->initial_rent_amount, $data['rent_amount']);
+        }
+
         $lease->update($data);
 
         return response()->json($lease->fresh());
@@ -83,6 +91,12 @@ class LeaseController extends Controller
     public function vacate(Request $request, Lease $lease)
     {
         $this->authorizeOwner($request, $lease, via: 'unit.property');
+
+        abort_unless(
+            $lease->inspections()->where('type', 'sortie')->exists(),
+            422,
+            "L'état des lieux de sortie est obligatoire avant la clôture du bail — Art. 11 de la loi n°2022-30."
+        );
 
         DB::transaction(function () use ($lease) {
             $lease->update(['status' => 'ended', 'end_date' => now()]);

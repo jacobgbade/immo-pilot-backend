@@ -6,8 +6,8 @@ use App\Http\Controllers\Api\Concerns\AuthorizesOwnership;
 use App\Http\Controllers\Controller;
 use App\Models\Lease;
 use App\Models\Payment;
+use App\Support\PaymentRecorder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 
 class PaymentController extends Controller
 {
@@ -77,24 +77,7 @@ class PaymentController extends Controller
 
         abort_if($lease->paymentForPeriod($data['period']), 422, 'Ce mois est déjà marqué payé.');
 
-        $payment = $lease->payments()->create($data + [
-            'reference' => 'PAY-' . Str::upper(Str::random(8)),
-        ]);
-
-        // A payment settles any mise en demeure open for the same period (Art. 76) —
-        // the legal clock stops the moment the debt is actually paid.
-        $lease->demandLetters()
-            ->where('period', $data['period'])
-            ->whereNull('resolved_at')
-            ->update(['resolved_at' => now()]);
-
-        $request->user()->alerts()->create([
-            'category' => 'paiements',
-            'icon' => '✓',
-            'message' => 'Paiement de ' . number_format($data['amount'], 0, ',', ' ') . ' FCFA enregistré.',
-            'subject_type' => Payment::class,
-            'subject_id' => $payment->id,
-        ]);
+        $payment = PaymentRecorder::record($request->user(), $lease, $data);
 
         return response()->json($payment->load('lease.tenant', 'lease.unit.property'), 201);
     }

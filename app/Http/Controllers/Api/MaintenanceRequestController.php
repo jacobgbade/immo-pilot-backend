@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Api\Concerns\AuthorizesOwnership;
+use App\Http\Controllers\Api\Concerns\ResolvesTenantLease;
 use App\Http\Controllers\Controller;
 use App\Models\Artisan;
 use App\Models\MaintenanceRequest;
@@ -11,7 +12,7 @@ use Illuminate\Http\Request;
 
 class MaintenanceRequestController extends Controller
 {
-    use AuthorizesOwnership;
+    use AuthorizesOwnership, ResolvesTenantLease;
 
     /** Spec section 27: list, most recent first. */
     public function index(Request $request)
@@ -40,6 +41,7 @@ class MaintenanceRequestController extends Controller
         $maintenanceRequest = MaintenanceRequest::create($data + [
             'status' => 'reported',
             'reported_at' => now(),
+            'created_by' => 'owner',
         ]);
 
         $request->user()->alerts()->create([
@@ -51,6 +53,50 @@ class MaintenanceRequestController extends Controller
         ]);
 
         return response()->json($maintenanceRequest->load('property', 'unit', 'tenant', 'artisan'), 201);
+    }
+
+    /** Tenant: signale un problème sur son propre logement (spec 0bis). */
+    public function storeAsTenant(Request $request)
+    {
+        $lease = $this->activeLeaseForTenant($request);
+
+        $data = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+        ]);
+
+        $maintenanceRequest = MaintenanceRequest::create($data + [
+            'property_id' => $lease->unit->property_id,
+            'unit_id' => $lease->unit_id,
+            'tenant_id' => $lease->tenant_id,
+            'status' => 'reported',
+            'reported_at' => now(),
+            'created_by' => 'tenant',
+        ]);
+
+        $lease->unit->property->user->alerts()->create([
+            'category' => 'maintenance',
+            'icon' => '🔧',
+            'message' => "{$lease->tenant->name} a signalé : {$maintenanceRequest->title} ({$lease->unit->property->name}).",
+            'subject_type' => MaintenanceRequest::class,
+            'subject_id' => $maintenanceRequest->id,
+        ]);
+
+        return response()->json($maintenanceRequest->load('property', 'unit', 'tenant', 'artisan'), 201);
+    }
+
+    /** Tenant: ses propres demandes, plus récentes en premier. */
+    public function mineAsTenant(Request $request)
+    {
+        $lease = $this->activeLeaseForTenant($request);
+
+        $requests = MaintenanceRequest::where('unit_id', $lease->unit_id)
+            ->where('tenant_id', $lease->tenant_id)
+            ->with('artisan')
+            ->latest('reported_at')
+            ->get();
+
+        return response()->json($requests);
     }
 
     public function show(Request $request, MaintenanceRequest $maintenanceRequest)

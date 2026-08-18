@@ -21,6 +21,7 @@ class MaintenanceRequest extends Model
         'estimated_cost',
         'final_cost',
         'reported_at',
+        'created_by',
     ];
 
     protected function casts(): array

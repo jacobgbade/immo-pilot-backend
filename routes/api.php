@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\InspectionController;
 use App\Http\Controllers\Api\LeaseController;
 use App\Http\Controllers\Api\MaintenanceRequestController;
 use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\PaymentDeclarationController;
 use App\Http\Controllers\Api\PropertyController;
 use App\Http\Controllers\Api\TenantAuthController;
 use App\Http\Controllers\Api\TenantController;
@@ -28,6 +29,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Tenant portal (role: tenant)
     Route::get('/tenant/home', [TenantPortalController::class, 'home']);
+    Route::get('/tenant/payment-declarations', [PaymentDeclarationController::class, 'mine']);
+    Route::post('/tenant/payment-declarations', [PaymentDeclarationController::class, 'store']);
+    Route::get('/tenant/maintenance-requests', [MaintenanceRequestController::class, 'mineAsTenant']);
+    Route::post('/tenant/maintenance-requests', [MaintenanceRequestController::class, 'storeAsTenant']);
 
     // Properties
     Route::get('/properties', [PropertyController::class, 'index']);
@@ -65,6 +70,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/payments', [PaymentController::class, 'index']);
     Route::get('/payments/overview', [PaymentController::class, 'overview']);
     Route::post('/leases/{lease}/payments', [PaymentController::class, 'store']);
+
+    // Payment declarations (owner side — tenant side is under /tenant above)
+    Route::get('/payment-declarations', [PaymentDeclarationController::class, 'index']);
+    Route::post('/payment-declarations/{declaration}/confirm', [PaymentDeclarationController::class, 'confirm']);
+    Route::post('/payment-declarations/{declaration}/reject', [PaymentDeclarationController::class, 'reject']);
 
     // Artisans
     Route::get('/artisans', [ArtisanController::class, 'index']);

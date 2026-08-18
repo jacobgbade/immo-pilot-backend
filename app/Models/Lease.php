@@ -60,6 +60,16 @@ class Lease extends Model
         return $this->hasMany(DemandLetter::class);
     }
 
+    public function paymentDeclarations(): HasMany
+    {
+        return $this->hasMany(PaymentDeclaration::class);
+    }
+
+    public function maintenanceRequests(): HasMany
+    {
+        return $this->hasMany(MaintenanceRequest::class, 'unit_id', 'unit_id');
+    }
+
     /** Payment already recorded for the given "YYYY-MM" period, if any. */
     public function paymentForPeriod(string $period): ?Payment
     {

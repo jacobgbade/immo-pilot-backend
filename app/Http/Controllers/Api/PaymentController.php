@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Api\Concerns\AuthorizesOwnership;
+use App\Http\Controllers\Api\Concerns\ResolvesTenantLease;
 use App\Http\Controllers\Controller;
 use App\Models\Lease;
 use App\Models\Payment;
@@ -11,7 +12,7 @@ use Illuminate\Http\Request;
 
 class PaymentController extends Controller
 {
-    use AuthorizesOwnership;
+    use AuthorizesOwnership, ResolvesTenantLease;
 
     /** Spec section 25: history across all properties, most recent first. */
     public function index(Request $request)
@@ -61,6 +62,23 @@ class PaymentController extends Controller
                 'status' => $l->paymentForPeriod($period) ? 'paid' : 'overdue',
             ]),
         ]);
+    }
+
+    /**
+     * Tenant: son propre historique de paiements, toutes leases confondues (y compris un
+     * bail terminé) — sert de base aux quittances (spec 0bis), plus récent en premier.
+     */
+    public function mine(Request $request)
+    {
+        $tenant = $request->user()->tenantProfile;
+        abort_if(! $tenant, 403, "Ce compte n'est rattaché à aucun locataire.");
+
+        $payments = Payment::whereIn('lease_id', $tenant->leases()->pluck('id'))
+            ->with('lease.tenant', 'lease.unit.property.user')
+            ->latest('paid_at')
+            ->get();
+
+        return response()->json($payments);
     }
 
     /** Spec section 25/38 (Enregistrer un paiement): records the period as paid. */

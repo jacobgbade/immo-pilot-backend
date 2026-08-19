@@ -33,6 +33,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/tenant/payment-declarations', [PaymentDeclarationController::class, 'store']);
     Route::get('/tenant/maintenance-requests', [MaintenanceRequestController::class, 'mineAsTenant']);
     Route::post('/tenant/maintenance-requests', [MaintenanceRequestController::class, 'storeAsTenant']);
+    Route::get('/tenant/payments', [PaymentController::class, 'mine']);
 
     // Properties
     Route::get('/properties', [PropertyController::class, 'index']);
